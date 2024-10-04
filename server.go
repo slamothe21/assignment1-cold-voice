@@ -8,6 +8,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -27,14 +28,37 @@ func server(server_port string) {
 	if err != nil {
 		// handle error
 		log.Fatalf("Error starting the server on port %s: %v", server_port, err)
-
 	}
+	defer ln.Close()
+
+	fmt.Printf("Server is listening on %s\n", address)
+
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
-			// handle error
+			log.Printf("Error accepting client connection: %v", err)
+			continue // Move on to the next connection attempt
 		}
-		go handleConnection(conn)
+		// Handle the connected client in a dedicated function
+		handleConnection(conn)
+	}
+}
+func handleConnection(conn net.Conn) {
+	// Make sure the connection is closed once we're done
+	defer conn.Close()
+	// Create a buffer to store the received data
+	buf := make([]byte, RECV_BUFFER_SIZE)
+
+	// Keep reading data from the client until they disconnect or there's an error
+	for {
+		n, err := conn.Read(buf)
+		if err != nil {
+			// Handle EOF gracefully
+			if err == io.EOF {
+				break
+			}
+			log.Fatalf("Failed to read from stdin: %v", err)
+		}
 	}
 }
 
