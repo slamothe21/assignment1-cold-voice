@@ -40,6 +40,7 @@ func client(server_ip string, server_port string) {
 
 		// Send the data to the server in chunks
 		totalSent := 0
+
 		for totalSent < n {
 			sent, err := conn.Write(buf[totalSent:n])
 			if err != nil {
