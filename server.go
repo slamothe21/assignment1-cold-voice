@@ -55,10 +55,13 @@ func handleConnection(conn net.Conn) {
 		if err != nil {
 			// Handle EOF gracefully
 			if err == io.EOF {
+				fmt.Print("Client at %s disconnected\n", conn.RemoteAddr().String())
+
 				break
 			}
-			log.Fatalf("Failed to read from stdin: %v", err)
+			log.Print("error reading from client: %v", err)
 		}
+		fmt.Print("Received from %s: %s", conn.RemoteAddr().String(), string(buf[:n]))
 	}
 }
 
