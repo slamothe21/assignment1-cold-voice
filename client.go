@@ -1,15 +1,13 @@
 /*****************************************************************************
  * client.go
- * Name:
- * NetId:
+ * Name: Sammy Lamothe and Jalen Jones
+ * NetId: sl2938, jj9832
  *****************************************************************************/
 
 package main
 
 import (
-	"io"
 	"log"
-	"net"
 	"os"
 )
 
@@ -17,28 +15,29 @@ const SEND_BUFFER_SIZE = 2048
 
 // client opens a socket and sends message from stdin
 func client(server_ip string, server_port string) {
-	// Connect to the server
-	conn, err := net.Dial("tcp", server_ip+":"+server_port)
+	// Attempt to connect to the server using a raw connection
+	conn, err := os.OpenFile("/dev/tcp/"+server_ip+"/"+server_port, os.O_RDWR, 0)
 	if err != nil {
 		log.Fatalf("Failed to connect to server: %v", err)
 	}
 	defer conn.Close()
 
-	// Create a buffer to read from stdin
+	// Buffer to hold chunks of data from stdin
 	buf := make([]byte, SEND_BUFFER_SIZE)
 
+	// Keep reading from stdin until there's nothing left (EOF)
 	for {
-		// Read data from stdin
 		n, err := os.Stdin.Read(buf)
 		if err != nil {
-			// Handle EOF gracefully
-			if err == io.EOF {
+			// If EOF is reached, stop the loop
+			if err.Error() == "EOF" {
 				break
 			}
+			// For any other error, terminate the program
 			log.Fatalf("Failed to read from stdin: %v", err)
 		}
 
-		// Send the data to the server in chunks
+		// Send the data to the server in chunks if necessary
 		totalSent := 0
 		for totalSent < n {
 			sent, err := conn.Write(buf[totalSent:n])
