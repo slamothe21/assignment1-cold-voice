@@ -7,88 +7,59 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
+	"io"
 	"log"
 	"net"
-	"os"
-	"strings"
 )
 
-const SERVER_PORT = "8000"
+const RECV_BUFFER_SIZE = 2048
 
-/* server()
- * Open socket, accept client connections, and process messages.
+/* TODO: server()
+ * Open socket and wait for client to connect
+ * Print received message to stdout
  */
-func server(server_ip string, server_port string) {
-	// Combine IP and port into a single address string
-	address := fmt.Sprintf("%s:%s", server_ip, server_port)
+func server(server_port string) {
+	address := fmt.Sprintf("127.0.0.1:%s", server_port)
 
-	// Create a TCP listener on the specified address
+	// Start to listen for incoming connections
 	ln, err := net.Listen("tcp", address)
 	if err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+		// handle error
+		log.Fatalf("Error starting the server on port %s: %v", server_port, err)
 	}
-	defer ln.Close()
 
-	fmt.Printf("Server listening on %s\n", address)
+	fmt.Printf("Server is listening on %s\n", address)
 
-	// Infinite loop to accept and handle client connections
 	for {
-		// Wait for a connection attempt from a client
 		conn, err := ln.Accept()
 		if err != nil {
-			log.Printf("Failed to accept connection: %v", err)
-			continue // Try to accept another connection
+			log.Printf("Error accepting client connection: %v", err)
+			continue // Move on to the next connection attempt
 		}
-
-		// Handle client connection in a new goroutine (optional for concurrency)
-		go handleClient(conn)
+		// Handle the connected client in a dedicated function
+		handleConnection(conn)
 	}
 }
+func handleConnection(conn net.Conn) {
+	// Make sure the connection is closed once we're done
+	defer conn.Close()
+	// Create a buffer to store the received data
+	buf := make([]byte, RECV_BUFFER_SIZE)
 
-/* handleClient()
- * Reads data from client, processes it, and sends back a response.
- */
-func handleClient(conn net.Conn) {
-	defer conn.Close() // Ensure connection is closed after processing
-
-	fmt.Printf("Connected to %s\n", conn.RemoteAddr().String())
-
-	reader := bufio.NewReader(conn)
+	// Keep reading data from the client until they disconnect or there's an error
 	for {
-		// Read client message
-		message, err := reader.ReadString('\n')
+		n, err := conn.Read(buf)
 		if err != nil {
-			// Check if the error is EOF (client closed connection)
-			if err.Error() == "EOF" {
-				fmt.Println("Client disconnected")
-				return
+			// Handle EOF gracefully
+			if err == io.EOF {
+				fmt.Printf("Client at %s disconnected\n", conn.RemoteAddr().String())
+				break
 			}
-			log.Printf("Error reading message: %v", err)
-			return
+			log.Printf("error reading from client: %v", err)
+
 		}
-
-		// Print received message from client
-		fmt.Printf("Message Received: %s", message)
-
-		// Process the message (convert to uppercase)
-		newMessage := strings.ToUpper(message)
-
-		// Send processed message back to client
-		_, err = conn.Write([]byte(newMessage + "\n"))
-		if err != nil {
-			log.Printf("Failed to send response: %v", err)
-			return
-		}
+		buf = buf[:n]
+		fmt.Print(string(buf[:n]))
 	}
-}
-
-// Main function to parse command-line arguments and start the server
-func main() {
-	if len(os.Args) != 2 {
-		log.Fatal("Usage: ./server [server IP]")
-	}
-	server_ip := os.Args[1]
-	server(server_ip, SERVER_PORT)
 }
